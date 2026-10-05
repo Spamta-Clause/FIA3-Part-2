@@ -290,7 +290,7 @@ def run_benchmark():
     from rich.table import Table
 
     console = Console()
-    results = []
+    results = []  # (label, iterations, avg_ms, total_ms)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -318,7 +318,12 @@ def run_benchmark():
 
         for label, func in read_benchmarks:
             elapsed = timeit.timeit(func, number=READ_ITERATIONS)
-            results.append((label, READ_ITERATIONS, elapsed / READ_ITERATIONS * 1000))
+            results.append((
+                label,
+                READ_ITERATIONS,
+                elapsed / READ_ITERATIONS * 1000,  # avg ms per call
+                elapsed * 1000,                    # total ms for all calls
+            ))
 
         # Mutating methods change state on every call, so repeating them
         # thousands of times either fails outright (duplicate keys) or
@@ -342,19 +347,34 @@ def run_benchmark():
             db.connection.close()  # release the previous copy's file handle (Windows)
             db = _fresh_datastore(tmp_path)
             elapsed = timeit.timeit(func, number=1)
-            results.append((label, 1, elapsed * 1000))
+            results.append((label, 1, elapsed * 1000, elapsed * 1000))
 
         db.connection.close()
 
+    # slowest first, then add a running total down the sorted rows
     sorted_results = sorted(results, key=lambda r: -r[2])
+
+    rows = []
+    running_ms = 0
+    for label, iterations, avg_ms, total_ms in sorted_results:
+        running_ms += total_ms
+        rows.append((label, iterations, avg_ms, total_ms, running_ms))
 
     table = Table(title="datastore.py performance")
     table.add_column("Method")
     table.add_column("Iterations", justify="right")
     table.add_column("Avg time (ms)", justify="right")
+    table.add_column("Total time (ms)", justify="right")
+    table.add_column("Running total (ms)", justify="right")
 
-    for label, iterations, avg_ms in sorted_results:
-        table.add_row(label, str(iterations), f"{avg_ms:.4f}")
+    for label, iterations, avg_ms, total_ms, running_ms in rows:
+        table.add_row(
+            label,
+            str(iterations),
+            f"{avg_ms:.4f}",
+            f"{total_ms:.4f}",
+            f"{running_ms:.4f}",
+        )
 
     console.print(table)
 
@@ -365,12 +385,12 @@ def run_benchmark():
         "",
         f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "",
-        "| Method | Iterations | Avg time (ms) |",
-        "|---|---|---|",
+        "| Method | Iterations | Avg time (ms) | Total time (ms) | Running total (ms) |",
+        "|---|---|---|---|---|",
     ]
     lines += [
-        f"| `{label}` | {iterations} | {avg_ms:.4f} |"
-        for label, iterations, avg_ms in sorted_results
+        f"| `{label}` | {iterations} | {avg_ms:.4f} | {total_ms:.4f} | {running_ms:.4f} |"
+        for label, iterations, avg_ms, total_ms, running_ms in rows
     ]
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     console.print(f"Markdown report written to {report_path}")
