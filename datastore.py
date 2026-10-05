@@ -274,30 +274,13 @@ class Datastore:
         return self.cursor.fetchall()
 
     def add_annual_fees(self, year, amt):
-        self.cursor.execute("""
-            SELECT year 
-            FROM fees 
-            WHERE year = :year""", 
-            {
-                "year": year
-                })
-        if self.cursor.fetchall():
-            raise sqlite3.IntegrityError(f"Annual fees for {year} have already been recorded.")
-
-        self.cursor.execute("""
-            SELECT mem_id 
-            FROM members 
-            WHERE active = 1""")
-        for (mem_id,) in self.cursor.fetchall():
-            self.cursor.execute(
-                """INSERT INTO fees
-                VALUES (:year, :mem_id, :amt, 0)""",
-                {
-                    "year": year, 
-                    "mem_id": mem_id, 
-                    "amt": amt
-                }
-            )
+        self.cursor.execute(
+            """
+            INSERT INTO fees
+            SELECT :year, mem_id, :amt, 0 FROM members WHERE active = 1
+            """,
+            {"year": year, "amt": amt},
+        )
         self.connection.commit()
 
     def add_loan(self, mem_id):
