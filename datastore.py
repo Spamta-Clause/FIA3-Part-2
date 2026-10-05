@@ -16,6 +16,8 @@ class Datastore:
                     CREATE INDEX IF NOT EXISTS idx_fees_mem_year ON fees(mem_id, year);
                     """
                 )
+        self.cursor.execute("PRAGMA journal_mode = WAL")
+        self.cursor.execute("PRAGMA synchronous = NORMAL")
 
     def get_catalogue(self):
         #[(game_id:int, name:str, category:str, min_players:int, max_players:int, min_age:int, status:str, on_hold:bool)]
