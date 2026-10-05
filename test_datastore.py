@@ -285,7 +285,7 @@ def _fresh_datastore(tmp_dir: Path) -> Datastore:
     return Datastore(str(db_copy))
 
 
-def run_benchmark():
+def run_benchmark(running_ms=0.0):
     from rich.console import Console
     from rich.table import Table
 
@@ -351,11 +351,11 @@ def run_benchmark():
 
         db.connection.close()
 
-    # slowest first, then add a running total down the sorted rows
+    # slowest first, then continue the running total down the sorted rows,
+    # starting from wherever the previous run finished
     sorted_results = sorted(results, key=lambda r: -r[2])
 
     rows = []
-    running_ms = 0
     for label, iterations, avg_ms, total_ms in sorted_results:
         running_ms += total_ms
         rows.append((label, iterations, avg_ms, total_ms, running_ms))
@@ -367,13 +367,13 @@ def run_benchmark():
     table.add_column("Total time (ms)", justify="right")
     table.add_column("Running total (ms)", justify="right")
 
-    for label, iterations, avg_ms, total_ms, running_ms in rows:
+    for label, iterations, avg_ms, total_ms, row_running_ms in rows:
         table.add_row(
             label,
             str(iterations),
             f"{avg_ms:.4f}",
             f"{total_ms:.4f}",
-            f"{running_ms:.4f}",
+            f"{row_running_ms:.4f}",
         )
 
     console.print(table)
@@ -389,22 +389,26 @@ def run_benchmark():
         "|---|---|---|---|---|",
     ]
     lines += [
-        f"| `{label}` | {iterations} | {avg_ms:.4f} | {total_ms:.4f} | {running_ms:.4f} |"
-        for label, iterations, avg_ms, total_ms, running_ms in rows
+        f"| `{label}` | {iterations} | {avg_ms:.4f} | {total_ms:.4f} | {row_running_ms:.4f} |"
+        for label, iterations, avg_ms, total_ms, row_running_ms in rows
     ]
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     console.print(f"Markdown report written to {report_path}")
+
+    return running_ms
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="datastore.py test/benchmark program")
     parser.add_argument(
-        "--benchmark", action="store_true", help="run the performance benchmark"
+        "--benchmark", nargs="?", type=int, const=1, default=None, help="run the performance benchmark, and the amount of times to run benchmark"
     )
     args = parser.parse_args()
 
     if args.benchmark:
-        run_benchmark()
+        running_ms = 0.0
+        for _ in range(args.benchmark):
+            running_ms = run_benchmark(running_ms)
     else:
         print("Run correctness tests with: pytest test_datastore.py")
         print("Run the performance benchmark with: python test_datastore.py --benchmark")

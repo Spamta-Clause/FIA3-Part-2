@@ -5,6 +5,8 @@ class Datastore:
         self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()
 
+        
+
     def get_catalogue(self):
         #[(game_id:int, name:str, category:str, min_players:int, max_players:int, min_age:int, status:str, on_hold:bool)]
         """
@@ -156,7 +158,7 @@ class Datastore:
             results = self.cursor.fetchall()
             actual_results = []
             for result in results:
-                actual_results.append((result[0], f"{result[1]} {result[2]}",*result[3:]))
+                actual_results.append((result[0], f"{result[1]} {result[2]}",result[3:]))
             return actual_results
 
     #okeeeeeeee logining um what do we do check docs
