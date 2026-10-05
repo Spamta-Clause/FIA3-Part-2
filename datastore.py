@@ -53,10 +53,10 @@ class Datastore:
                                   AND games_loaned.return_date IS NULL
             LEFT JOIN loans ON games_loaned.loan_id = loans.loan_id
             LEFT JOIN categories ON games.Cat_id = categories.cat_id
-            WHERE LOWER(games.name) LIKE :name
+            WHERE games.name LIKE :name
             """,
             {
-                'name': f"%{name.lower()}%"
+                'name': f"%{name}%"
             }
         )
         results = self.cursor.fetchall()
@@ -456,6 +456,7 @@ class Datastore:
         return datetime.date.today().strftime("%Y-%m-%d")
     
     def close(self):
+        self.cursor.execute("PRAGMA optimize")
         self.connection.close()
 
 # db = Datastore("TableTopGamers.db")
