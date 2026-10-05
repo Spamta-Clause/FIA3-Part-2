@@ -5,7 +5,17 @@ class Datastore:
         self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()
 
-        
+        self.cursor.executescript(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_loaned_game_active
+                        ON games_loaned(game_id) WHERE return_date IS NULL;
+                    CREATE INDEX IF NOT EXISTS idx_loaned_loan ON games_loaned(loan_id);
+                    CREATE INDEX IF NOT EXISTS idx_loans_mem ON loans(mem_id);
+                    CREATE INDEX IF NOT EXISTS idx_games_cat ON games(Cat_id);
+                    CREATE INDEX IF NOT EXISTS idx_members_email ON members(email);
+                    CREATE INDEX IF NOT EXISTS idx_fees_mem_year ON fees(mem_id, year);
+                    """
+                )
 
     def get_catalogue(self):
         #[(game_id:int, name:str, category:str, min_players:int, max_players:int, min_age:int, status:str, on_hold:bool)]
